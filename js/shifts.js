@@ -30,7 +30,7 @@ export const SHIFTS = {
       { name: 'Snack pre-entreno', hora: '17:15' },
       { name: 'Cena/recuperación post-entreno', hora: '20:00' },
       { name: 'Snack en turno', hora: '00:00' },
-      { name: 'Snack en turno', hora: '03:30' },
+      { name: 'Segundo snack en turno', hora: '03:30' },
       { name: 'Snack ligero al salir', hora: '06:30' },
     ],
   },

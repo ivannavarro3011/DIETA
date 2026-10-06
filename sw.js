@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dieta-ivan-v3';
+const CACHE_NAME = 'dieta-ivan-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,9 @@ const ASSETS = [
   './js/seed-foods.js',
   './js/seed-recipes.js',
   './js/meal-category.js',
+  './js/menu-planner.js',
+  './js/nutrition.js',
+  './js/views/profile-form.js',
   './js/shifts.js',
   './js/utils.js',
   './js/views/day.js',

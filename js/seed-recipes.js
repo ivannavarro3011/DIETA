@@ -79,6 +79,32 @@ export const SEED_RECIPES = [
     ],
   },
   {
+    nombre: 'Espaguetis a la boloñesa',
+    categorias: ['principal', 'cena'],
+    items: [
+      { food: 'Pasta (cruda)', gramos: 130 },
+      { food: 'Carne picada mixta (cerdo/ternera)', gramos: 150 },
+      { food: 'Sofrito de tomate', gramos: 120 },
+      { food: 'Aceite de oliva', gramos: 5 },
+    ],
+  },
+  {
+    nombre: 'Patata cocida',
+    categorias: ['principal', 'cena'],
+    items: [
+      { food: 'Patata (cocida)', gramos: 400 },
+      { food: 'Aceite de oliva', gramos: 10 },
+    ],
+  },
+  {
+    nombre: 'Contramuslo de pollo',
+    categorias: ['principal', 'cena'],
+    items: [
+      { food: 'Contramuslo de pollo', gramos: 250 },
+      { food: 'Aceite de oliva', gramos: 5 },
+    ],
+  },
+  {
     nombre: 'Pasta con atún',
     categoria: 'principal',
     items: [

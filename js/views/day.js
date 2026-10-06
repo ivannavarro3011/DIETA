@@ -3,9 +3,10 @@ import { formatDateHuman, addDays, todayStr, round1 } from '../utils.js';
 import {
   getDayMeals, setDayTurno, addItemToSlot, removeItemFromSlot,
   getAllFoods, getSettings, computeDayTotals,
-  getAllRecipes, computeRecipeTotals, applyRecipeToSlot, generateDayMenu,
+  getAllRecipes, applyRecipeToSlot, generateDayMenu,
 } from '../store.js';
 import { slotCategory } from '../meal-category.js';
+import { recipeMatches, scaleRecipe, slotShareKcal, totalsOf } from '../menu-planner.js';
 
 let state = {
   date: todayStr(),
@@ -160,7 +161,11 @@ function openSuggestionsModal(slotName) {
   const modalRoot = document.getElementById('modal-root');
   const foodsById = new Map(state.foods.map((f) => [f.id, f]));
   const category = slotCategory(slotName);
-  const candidates = state.recipes.filter((r) => r.categoria === category);
+  const slots = SHIFTS[state.day.turno]?.slots || SHIFTS.libre.slots;
+  const targetKcal = slotShareKcal(slots, slotName, state.settings.kcalObjetivo);
+  const candidates = state.recipes
+    .filter((r) => recipeMatches(r, category))
+    .map((r) => scaleRecipe(r, targetKcal, foodsById));
 
   modalRoot.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
@@ -169,9 +174,10 @@ function openSuggestionsModal(slotName) {
           <span>Sugerencias para ${slotName}</span>
           <button class="icon-btn" id="closeModal">✕</button>
         </div>
+        <div class="empty-hint">Cantidades ajustadas a unas ${Math.round(targetKcal)} kcal para esta comida.</div>
         <div class="recipe-results">
           ${candidates.map((r) => {
-            const totals = computeRecipeTotals(r, foodsById);
+            const totals = totalsOf(r.items, foodsById);
             const ingredientes = r.items.map((i) => {
               const f = foodsById.get(i.foodId);
               return f ? `${f.nombre} ${i.gramos}g` : null;

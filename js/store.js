@@ -2,20 +2,17 @@ import { db } from './db.js';
 import { SEED_FOODS } from './seed-foods.js';
 import { SEED_RECIPES } from './seed-recipes.js';
 import { defaultTurnoForDate } from './shifts.js';
-import { slotCategory } from './meal-category.js';
+import { planDay, totalsOf } from './menu-planner.js';
+import { calcTargets, isProfileComplete } from './nutrition.js';
 import { uid } from './utils.js';
 
 const SETTINGS_ID = 'main';
 
+// Sin datos personales: cada usuario los rellena en el formulario de bienvenida.
 export const DEFAULT_SETTINGS = {
   id: SETTINGS_ID,
-  pesoActual: 88,
-  pesoObjetivo: 95,
-  altura: 190,
-  kcalObjetivo: 3700,
-  proteinaObjetivo: 160,
-  carbosObjetivo: 515,
-  grasaObjetivo: 118,
+  onboarded: false,
+  macrosAuto: true,
 };
 
 export async function ensureInitialized() {
@@ -46,7 +43,12 @@ export async function ensureInitialized() {
       .map((i) => ({ foodId: foodIdByName.get(i.food), gramos: i.gramos }))
       .filter((i) => i.foodId != null);
     if (items.length) {
-      await db.add(db.STORES.recipes, { nombre: r.nombre, categoria: r.categoria, items });
+      await db.add(db.STORES.recipes, {
+        nombre: r.nombre,
+        categoria: r.categoria ?? r.categorias[0],
+        categorias: r.categorias,
+        items,
+      });
     }
   }
 
@@ -140,10 +142,22 @@ export async function addWeight(dateStr, kg) {
   if (existing) {
     existing.kg = kg;
     await db.put(db.STORES.weights, existing);
-    return existing;
+  } else {
+    await db.add(db.STORES.weights, { date: dateStr, kg });
   }
-  const id = await db.add(db.STORES.weights, { date: dateStr, kg });
-  return { id, date: dateStr, kg };
+  const isLatest = all.every((w) => w.date <= dateStr);
+  if (isLatest) await updateCurrentWeight(kg);
+}
+
+// El registro más reciente pasa a ser el peso actual; si los macros son automáticos, se recalculan.
+async function updateCurrentWeight(kg) {
+  const settings = await getSettings();
+  const updated = { ...settings, pesoActual: kg };
+  if (updated.macrosAuto !== false && isProfileComplete(updated)) {
+    const { kcalObjetivo, proteinaObjetivo, carbosObjetivo, grasaObjetivo } = calcTargets(updated);
+    Object.assign(updated, { kcalObjetivo, proteinaObjetivo, carbosObjetivo, grasaObjetivo });
+  }
+  await saveSettings(updated);
 }
 
 export async function deleteWeight(id) {
@@ -195,34 +209,7 @@ export async function deleteRecipe(id) {
   return db.delete(db.STORES.recipes, id);
 }
 
-export function computeRecipeTotals(recipe, foodsById) {
-  let kcal = 0, prot = 0, carbs = 0, grasa = 0;
-  for (const item of recipe.items) {
-    const food = foodsById.get(item.foodId);
-    if (!food) continue;
-    const factor = item.gramos / 100;
-    kcal += food.kcal100 * factor;
-    prot += food.prot100 * factor;
-    carbs += food.carbs100 * factor;
-    grasa += food.grasa100 * factor;
-  }
-  return { kcal, prot, carbs, grasa };
-}
-
-// Elige una receta "distinta" cada día para una franja, de forma determinista
-// (misma fecha+franja siempre da la misma sugerencia, pero varía día a día).
-export function pickRecipeForSlot(dateStr, slotName, recipes) {
-  const category = slotCategory(slotName);
-  const candidates = recipes.filter((r) => r.categoria === category);
-  if (candidates.length === 0) return null;
-  const seed = `${dateStr}:${slotName}`;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  return candidates[hash % candidates.length];
-}
-
-export async function applyRecipeToSlot(dateStr, slotName, recipe) {
-  const day = await getDayMeals(dateStr);
+function addRecipeItems(day, slotName, recipe) {
   let entry = day.entries.find((e) => e.slotName === slotName);
   if (!entry) {
     entry = { slotName, items: [] };
@@ -231,38 +218,27 @@ export async function applyRecipeToSlot(dateStr, slotName, recipe) {
   for (const item of recipe.items) {
     entry.items.push({ id: uid(), foodId: item.foodId, gramos: item.gramos, recipeNombre: recipe.nombre });
   }
+}
+
+export async function applyRecipeToSlot(dateStr, slotName, recipe) {
+  const day = await getDayMeals(dateStr);
+  addRecipeItems(day, slotName, recipe);
   await saveDayMeals(day);
   return day;
 }
 
-// Rellena con sugerencias todas las franjas vacías del día (menú completo de un toque)
+// Rellena las franjas vacías del día con recetas escaladas a los macros objetivo.
 export async function generateDayMenu(dateStr, slots) {
-  const recipes = await getAllRecipes();
-  let day = await getDayMeals(dateStr);
-  for (const slot of slots) {
-    const entry = day.entries.find((e) => e.slotName === slot.name);
-    if (entry && entry.items.length > 0) continue;
-    const recipe = pickRecipeForSlot(dateStr, slot.name, recipes);
-    if (recipe) {
-      day = await applyRecipeToSlot(dateStr, slot.name, recipe);
-    }
-  }
+  const [recipes, foods, settings, day] = await Promise.all([
+    getAllRecipes(), db.getAll(db.STORES.foods), getSettings(), getDayMeals(dateStr),
+  ]);
+  const foodsById = new Map(foods.map((f) => [f.id, f]));
+  const plan = planDay({ dateStr, slots, day, recipes, foodsById, settings });
+  for (const [slotName, recipe] of plan) addRecipeItems(day, slotName, recipe);
+  await saveDayMeals(day);
   return day;
 }
 
-// Calcula macros totales de un día a partir de entries + base de alimentos
 export function computeDayTotals(day, foodsById) {
-  let kcal = 0, prot = 0, carbs = 0, grasa = 0;
-  for (const entry of day.entries) {
-    for (const item of entry.items) {
-      const food = foodsById.get(item.foodId);
-      if (!food) continue;
-      const factor = item.gramos / 100;
-      kcal += food.kcal100 * factor;
-      prot += food.prot100 * factor;
-      carbs += food.carbs100 * factor;
-      grasa += food.grasa100 * factor;
-    }
-  }
-  return { kcal, prot, carbs, grasa };
+  return totalsOf(day.entries.flatMap((e) => e.items), foodsById);
 }
