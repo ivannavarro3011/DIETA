@@ -17,6 +17,8 @@ export const SEED_FOODS = [
   { nombre: 'Yogur griego natural', categoria: 'Proteína', kcal100: 97, prot100: 9, carbs100: 3.6, grasa100: 5 },
   { nombre: 'Queso fresco batido 0%', categoria: 'Proteína', kcal100: 45, prot100: 8, carbs100: 4, grasa100: 0.2 },
   { nombre: 'Queso curado', categoria: 'Proteína', kcal100: 400, prot100: 25, carbs100: 1.3, grasa100: 33 },
+  { nombre: 'Queso parmesano', categoria: 'Proteína', kcal100: 392, prot100: 36, carbs100: 3.2, grasa100: 26 },
+  { nombre: 'Bacon / panceta', categoria: 'Proteína', kcal100: 400, prot100: 14, carbs100: 1, grasa100: 38 },
   { nombre: 'Lentejas cocidas', categoria: 'Proteína', kcal100: 116, prot100: 9, carbs100: 20, grasa100: 0.4 },
   { nombre: 'Garbanzos cocidos', categoria: 'Proteína', kcal100: 164, prot100: 8.9, carbs100: 27, grasa100: 2.6 },
   { nombre: 'Proteína en polvo (whey)', categoria: 'Proteína', kcal100: 380, prot100: 75, carbs100: 8, grasa100: 6 },

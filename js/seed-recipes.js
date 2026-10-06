@@ -69,6 +69,16 @@ export const SEED_RECIPES = [
     ],
   },
   {
+    nombre: 'Espaguetis carbonara',
+    categoria: 'principal',
+    items: [
+      { food: 'Pasta (cruda)', gramos: 150 },
+      { food: 'Bacon / panceta', gramos: 80 },
+      { food: 'Huevo entero', gramos: 100 },
+      { food: 'Queso parmesano', gramos: 30 },
+    ],
+  },
+  {
     nombre: 'Pasta con atún',
     categoria: 'principal',
     items: [

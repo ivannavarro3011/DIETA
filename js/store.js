@@ -23,25 +23,37 @@ export async function ensureInitialized() {
   if (!existing) {
     await db.put(db.STORES.settings, DEFAULT_SETTINGS);
   }
-  const foodCount = await db.count(db.STORES.foods);
-  if (foodCount === 0) {
-    for (const f of SEED_FOODS) {
+  // Siembra incremental: añade solo los elementos de serie que nunca se sembraron,
+  // para que las actualizaciones lleguen sin resucitar lo que el usuario borró.
+  const settings = await getSettings();
+  const seededFoods = new Set(settings.seededFoods || []);
+  const seededRecipes = new Set(settings.seededRecipes || []);
+
+  const existingFoods = await db.getAll(db.STORES.foods);
+  const existingFoodNames = new Set(existingFoods.map((f) => f.nombre));
+  for (const f of SEED_FOODS) {
+    if (!seededFoods.has(f.nombre) && !existingFoodNames.has(f.nombre)) {
       await db.add(db.STORES.foods, f);
     }
   }
-  const recipeCount = await db.count(db.STORES.recipes);
-  if (recipeCount === 0) {
-    const foods = await db.getAll(db.STORES.foods);
-    const foodIdByName = new Map(foods.map((f) => [f.nombre, f.id]));
-    for (const r of SEED_RECIPES) {
-      const items = r.items
-        .map((i) => ({ foodId: foodIdByName.get(i.food), gramos: i.gramos }))
-        .filter((i) => i.foodId != null);
-      if (items.length) {
-        await db.add(db.STORES.recipes, { nombre: r.nombre, categoria: r.categoria, items });
-      }
+
+  const foods = await db.getAll(db.STORES.foods);
+  const foodIdByName = new Map(foods.map((f) => [f.nombre, f.id]));
+  const existingRecipeNames = new Set((await db.getAll(db.STORES.recipes)).map((r) => r.nombre));
+  for (const r of SEED_RECIPES) {
+    if (seededRecipes.has(r.nombre) || existingRecipeNames.has(r.nombre)) continue;
+    const items = r.items
+      .map((i) => ({ foodId: foodIdByName.get(i.food), gramos: i.gramos }))
+      .filter((i) => i.foodId != null);
+    if (items.length) {
+      await db.add(db.STORES.recipes, { nombre: r.nombre, categoria: r.categoria, items });
     }
   }
+
+  await saveSettings({
+    seededFoods: SEED_FOODS.map((f) => f.nombre),
+    seededRecipes: SEED_RECIPES.map((r) => r.nombre),
+  });
 }
 
 export async function getSettings() {
