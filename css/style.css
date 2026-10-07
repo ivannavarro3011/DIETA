@@ -540,6 +540,13 @@ html, body {
   font-size: 13px;
 }
 
+.app-version {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 14px;
+}
+
 .loading {
   text-align: center;
   color: var(--text-muted);

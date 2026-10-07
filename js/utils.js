@@ -1,3 +1,6 @@
+// Subir junto con CACHE_NAME de sw.js en cada publicación.
+export const APP_VERSION = 7;
+
 export function todayStr() {
   return toDateStr(new Date());
 }

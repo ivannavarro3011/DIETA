@@ -1,5 +1,6 @@
 import { getSettings, saveSettings } from '../store.js';
 import { renderProfileForm } from './profile-form.js';
+import { APP_VERSION } from '../utils.js';
 
 export async function openSettingsModal(onSaved) {
   const s = await getSettings();
@@ -12,6 +13,7 @@ export async function openSettingsModal(onSaved) {
           <button class="icon-btn" id="closeModal">✕</button>
         </div>
         <div id="settingsForm"></div>
+        <div class="app-version">Versión ${APP_VERSION}</div>
       </div>
     </div>
   `;
