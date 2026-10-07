@@ -1,5 +1,5 @@
 // Mantener sincronizado con APP_VERSION de js/utils.js.
-const CACHE_NAME = 'dieta-ivan-v7';
+const CACHE_NAME = 'dieta-ivan-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,9 @@ const ASSETS = [
   './js/views/foods.js',
   './js/views/settings.js',
   './icons/icon.svg',
+  './icons/icon-180.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
 // Con conexión lenta, pasado este tiempo se sirve la copia guardada (la red sigue actualizándola).
