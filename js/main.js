@@ -5,7 +5,6 @@ import { renderWeight } from './views/weight.js';
 import { renderFoods } from './views/foods.js';
 import { openSettingsModal } from './views/settings.js';
 import { renderProfileForm } from './views/profile-form.js';
-import { escapeHtml } from './utils.js';
 
 const TABS = {
   hoy: { label: 'Hoy', icon: '🍽️', render: renderDay },
@@ -30,8 +29,12 @@ async function init() {
   }
 }
 
-function appTitle(settings) {
-  return settings.nombre ? `Dieta de ${escapeHtml(settings.nombre)}` : 'Mi dieta';
+// El título de la pestaña también da nombre al icono al instalar la app en iPhone.
+function showAppName(settings) {
+  const name = settings.nombre ? `Dieta de ${settings.nombre}` : 'Mi dieta';
+  document.title = name;
+  const header = document.getElementById('appTitle');
+  if (header) header.textContent = name;
 }
 
 function renderOnboarding(settings) {
@@ -63,7 +66,7 @@ function renderShell(settings) {
   const app = document.getElementById('app');
   app.innerHTML = `
     <header class="app-header">
-      <div class="app-title" id="appTitle">${appTitle(settings)}</div>
+      <div class="app-title" id="appTitle"></div>
       <button class="icon-btn" id="settingsBtn" aria-label="Mis datos">⚙️</button>
     </header>
     <main id="view-container" class="view-container"></main>
@@ -77,9 +80,10 @@ function renderShell(settings) {
     </nav>
     <div id="modal-root"></div>
   `;
+  showAppName(settings);
 
   document.getElementById('settingsBtn').onclick = () => openSettingsModal(async () => {
-    document.getElementById('appTitle').innerHTML = appTitle(await getSettings());
+    showAppName(await getSettings());
     renderActiveTab();
   });
 
