@@ -36,19 +36,28 @@ export async function ensureInitialized() {
 
   const foods = await db.getAll(db.STORES.foods);
   const foodIdByName = new Map(foods.map((f) => [f.nombre, f.id]));
-  const existingRecipeNames = new Set((await db.getAll(db.STORES.recipes)).map((r) => r.nombre));
+  // Las recetas de serie ya guardadas se actualizan si cambió su definición (no hay
+  // editor de recetas, así que no pisan cambios del usuario).
+  const existingRecipes = new Map((await db.getAll(db.STORES.recipes)).map((r) => [r.nombre, r]));
   for (const r of SEED_RECIPES) {
-    if (seededRecipes.has(r.nombre) || existingRecipeNames.has(r.nombre)) continue;
     const items = r.items
       .map((i) => ({ foodId: foodIdByName.get(i.food), gramos: i.gramos }))
       .filter((i) => i.foodId != null);
-    if (items.length) {
-      await db.add(db.STORES.recipes, {
-        nombre: r.nombre,
-        categoria: r.categoria ?? r.categorias[0],
-        categorias: r.categorias,
-        items,
-      });
+    if (!items.length) continue;
+    const definition = {
+      nombre: r.nombre,
+      categoria: r.categoria ?? r.categorias[0],
+      categorias: r.categorias,
+      items,
+    };
+    const existing = existingRecipes.get(r.nombre);
+    if (existing) {
+      const current = { nombre: existing.nombre, categoria: existing.categoria, categorias: existing.categorias, items: existing.items };
+      if (JSON.stringify(current) !== JSON.stringify(definition)) {
+        await db.put(db.STORES.recipes, { ...definition, id: existing.id });
+      }
+    } else if (!seededRecipes.has(r.nombre)) {
+      await db.add(db.STORES.recipes, definition);
     }
   }
 
@@ -216,7 +225,7 @@ function addRecipeItems(day, slotName, recipe) {
     day.entries.push(entry);
   }
   for (const item of recipe.items) {
-    entry.items.push({ id: uid(), foodId: item.foodId, gramos: item.gramos, recipeNombre: recipe.nombre });
+    entry.items.push({ id: uid(), foodId: item.foodId, gramos: item.gramos, recipeNombre: item.recipeNombre ?? recipe.nombre });
   }
 }
 

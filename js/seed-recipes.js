@@ -2,8 +2,6 @@
 // Los alimentos se referencian por nombre (deben existir en seed-foods.js) y se
 // resuelven a foodId durante la inicialización, una vez sembrada la base de alimentos.
 
-export const CATEGORIES_RECIPE = ['desayuno', 'principal', 'cena', 'snack'];
-
 export const SEED_RECIPES = [
   // Desayuno
   {
@@ -88,12 +86,20 @@ export const SEED_RECIPES = [
       { food: 'Aceite de oliva', gramos: 5 },
     ],
   },
+  // Guarnición: no sale sola, acompaña a platos con pocos hidratos (ver menu-planner.js).
   {
     nombre: 'Patata cocida',
-    categorias: ['principal', 'cena'],
+    categorias: ['guarnicion'],
     items: [
-      { food: 'Patata (cocida)', gramos: 400 },
-      { food: 'Aceite de oliva', gramos: 10 },
+      { food: 'Patata (cocida)', gramos: 250 },
+      { food: 'Aceite de oliva', gramos: 5 },
+    ],
+  },
+  {
+    nombre: 'Arroz blanco',
+    categorias: ['guarnicion'],
+    items: [
+      { food: 'Arroz blanco (cocido)', gramos: 200 },
     ],
   },
   {

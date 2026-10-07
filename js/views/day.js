@@ -6,7 +6,7 @@ import {
   getAllRecipes, applyRecipeToSlot, generateDayMenu,
 } from '../store.js';
 import { slotCategory } from '../meal-category.js';
-import { recipeMatches, scaleRecipe, slotShareKcal, totalsOf } from '../menu-planner.js';
+import { candidateRecipes, scaleRecipe, slotShareKcal, totalsOf } from '../menu-planner.js';
 
 let state = {
   date: todayStr(),
@@ -163,8 +163,7 @@ function openSuggestionsModal(slotName) {
   const category = slotCategory(slotName);
   const slots = SHIFTS[state.day.turno]?.slots || SHIFTS.libre.slots;
   const targetKcal = slotShareKcal(slots, slotName, state.settings.kcalObjetivo);
-  const candidates = state.recipes
-    .filter((r) => recipeMatches(r, category))
+  const candidates = candidateRecipes(state.recipes, category, foodsById)
     .map((r) => scaleRecipe(r, targetKcal, foodsById));
 
   modalRoot.innerHTML = `
@@ -205,7 +204,7 @@ function openSuggestionsModal(slotName) {
 
   modalRoot.querySelectorAll('.recipe-add-btn').forEach((btn) => {
     btn.onclick = async () => {
-      const recipe = candidates.find((r) => r.id === Number(btn.dataset.recipe));
+      const recipe = candidates.find((r) => String(r.id) === btn.dataset.recipe);
       if (!recipe) return;
       await applyRecipeToSlot(state.date, slotName, recipe);
       close();

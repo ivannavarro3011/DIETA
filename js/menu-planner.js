@@ -11,10 +11,47 @@ const MAX_COMBOS = 50000;
 // Días hacia atrás que se miran para no repetir platos, y penalización por repetir
 // ayer (decrece hasta casi 0 al llegar al límite).
 export const HISTORY_DAYS = 6;
-const REPEAT_PENALTY = 0.15;
+const REPEAT_PENALTY = 0.3;
+
+// Las guarniciones nunca salen solas: se ofrecen junto a platos principales/cenas
+// que aportan pocos hidratos (menos de este porcentaje de sus calorías).
+const SIDE_CATEGORY = 'guarnicion';
+const SIDE_SLOT_CATEGORIES = ['principal', 'cena'];
+const LOW_CARB_SHARE = 0.2;
 
 export function recipeMatches(recipe, category) {
   return (recipe.categorias || [recipe.categoria]).includes(category);
+}
+
+function withComponents(recipe) {
+  return { ...recipe, componentes: [recipe.nombre] };
+}
+
+function combineWithSide(main, side) {
+  return {
+    id: `${main.id}+${side.id}`,
+    nombre: `${main.nombre} con ${side.nombre.toLowerCase()}`,
+    componentes: [main.nombre, side.nombre],
+    items: [
+      ...main.items.map((i) => ({ ...i, recipeNombre: main.nombre })),
+      ...side.items.map((i) => ({ ...i, recipeNombre: side.nombre })),
+    ],
+  };
+}
+
+// Platos posibles para un tipo de comida: los propios y, si aplica, combinados con guarnición.
+export function candidateRecipes(recipes, category, foodsById) {
+  const mains = recipes.filter((r) => recipeMatches(r, category)).map(withComponents);
+  if (!SIDE_SLOT_CATEGORIES.includes(category)) return mains;
+  const sides = recipes.filter((r) => recipeMatches(r, SIDE_CATEGORY));
+  const combos = [];
+  for (const main of mains) {
+    const t = totalsOf(main.items, foodsById);
+    if (t.kcal > 0 && (t.carbs * 4) / t.kcal < LOW_CARB_SHARE) {
+      for (const side of sides) combos.push(combineWithSide(main, side));
+    }
+  }
+  return [...mains, ...combos];
 }
 
 export function totalsOf(items, foodsById) {
@@ -76,8 +113,7 @@ export function planDay({ dateStr, slots, day, recipes, foodsById, settings, rec
   const options = emptySlots
     .map((slot) => {
       const target = emptyWeight ? (remainingKcal * slotWeight(slot.name)) / emptyWeight : 0;
-      const candidates = recipes
-        .filter((r) => recipeMatches(r, slotCategory(slot.name)))
+      const candidates = candidateRecipes(recipes, slotCategory(slot.name), foodsById)
         .map((r) => {
           const scaled = scaleRecipe(r, target, foodsById);
           return { recipe: scaled, totals: totalsOf(scaled.items, foodsById) };
@@ -96,8 +132,9 @@ export function planDay({ dateStr, slots, day, recipes, foodsById, settings, rec
   };
   const rng = seededRandom(dateStr);
   // Pequeño ruido por receta y fecha: entre menús casi igual de buenos, varía de un día a otro.
-  const variety = new Map(recipes.map((r) => [r.id, rng() * 0.01]));
+  const variety = new Map(recipes.map((r) => [r.nombre, rng() * 0.01]));
 
+  // Las penalizaciones van por componente: un plato con guarnición cuenta como sus dos partes.
   function score(picks) {
     const t = { ...base };
     const seen = new Set();
@@ -108,11 +145,13 @@ export function planDay({ dateStr, slots, day, recipes, foodsById, settings, rec
       t.prot += c.totals.prot;
       t.carbs += c.totals.carbs;
       t.grasa += c.totals.grasa;
-      if (seen.has(c.recipe.id)) penalty += 0.05;
-      seen.add(c.recipe.id);
-      penalty += variety.get(c.recipe.id) || 0;
-      const daysAgo = recentRecipes.get(c.recipe.nombre);
-      if (daysAgo) penalty += (REPEAT_PENALTY * (HISTORY_DAYS + 1 - daysAgo)) / HISTORY_DAYS;
+      for (const nombre of c.recipe.componentes) {
+        if (seen.has(nombre)) penalty += 0.05;
+        seen.add(nombre);
+        penalty += variety.get(nombre) || 0;
+        const daysAgo = recentRecipes.get(nombre);
+        if (daysAgo) penalty += (REPEAT_PENALTY * (HISTORY_DAYS + 1 - daysAgo)) / HISTORY_DAYS;
+      }
     });
     const err = (k) => (goal[k] > 0 ? ((t[k] - goal[k]) / goal[k]) ** 2 : 0);
     return 2 * err('kcal') + err('prot') + err('carbs') + err('grasa') + penalty;
