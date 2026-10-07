@@ -1,5 +1,5 @@
 import { SHIFTS } from '../shifts.js';
-import { formatDateHuman, addDays, todayStr, round1 } from '../utils.js';
+import { formatDateHuman, addDays, todayStr, round1, escapeHtml } from '../utils.js';
 import {
   getDayMeals, setDayTurno, addItemToSlot, removeItemFromSlot,
   getAllFoods, getSettings, computeDayTotals,
@@ -122,7 +122,7 @@ function renderSlots(el, foodsById) {
             const f = foodsById.get(item.foodId);
             return `
               <div class="slot-item" data-slot="${slot.name}" data-item="${item.id}">
-                <span>${f ? f.nombre : '(alimento eliminado)'} · ${item.gramos}g</span>
+                <span>${f ? escapeHtml(f.nombre) : '(alimento eliminado)'} · ${item.gramos}g</span>
                 <button class="remove-item-btn" data-slot="${slot.name}" data-item="${item.id}">✕</button>
               </div>
             `;
@@ -180,12 +180,12 @@ function openSuggestionsModal(slotName) {
             const totals = totalsOf(r.items, foodsById);
             const ingredientes = r.items.map((i) => {
               const f = foodsById.get(i.foodId);
-              return f ? `${f.nombre} ${i.gramos}g` : null;
+              return f ? `${escapeHtml(f.nombre)} ${i.gramos}g` : null;
             }).filter(Boolean).join(' · ');
             return `
               <div class="recipe-card">
                 <div class="recipe-card-header">
-                  <span class="recipe-name">${r.nombre}</span>
+                  <span class="recipe-name">${escapeHtml(r.nombre)}</span>
                   <span class="recipe-kcal">${round1(totals.kcal)} kcal</span>
                 </div>
                 <div class="recipe-macros">P${round1(totals.prot)}g · C${round1(totals.carbs)}g · G${round1(totals.grasa)}g</div>
@@ -244,7 +244,7 @@ function openAddFoodModal(slotName, slotsEl) {
       : state.foods;
     resultsEl.innerHTML = filtered.slice(0, 50).map((f) => `
       <div class="food-result" data-id="${f.id}">
-        <span>${f.nombre}</span>
+        <span>${escapeHtml(f.nombre)}</span>
         <span class="food-result-kcal">${f.kcal100} kcal/100g</span>
       </div>
     `).join('') || '<div class="empty-hint">Sin resultados</div>';
@@ -258,7 +258,7 @@ function openAddFoodModal(slotName, slotsEl) {
     const food = state.foods.find((f) => f.id === foodId);
     modalRoot.querySelector('.modal').innerHTML = `
       <div class="modal-header">
-        <span>${food.nombre}</span>
+        <span>${escapeHtml(food.nombre)}</span>
         <button class="icon-btn" id="closeModal2">✕</button>
       </div>
       <label class="field-label">Cantidad (gramos)</label>

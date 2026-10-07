@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dieta-ivan-v4';
+const CACHE_NAME = 'dieta-ivan-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,8 @@ const ASSETS = [
   './js/menu-planner.js',
   './js/nutrition.js',
   './js/views/profile-form.js',
+  './js/food-lookup.js',
+  './js/barcode-scanner.js',
   './js/shifts.js',
   './js/utils.js',
   './js/views/day.js',
@@ -39,6 +41,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Solo cacheamos la propia app; las APIs externas (Open Food Facts, lector de códigos) van siempre a la red.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request)

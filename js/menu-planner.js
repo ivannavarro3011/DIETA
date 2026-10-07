@@ -8,6 +8,11 @@ const MIN_SCALE = 0.5;
 const MAX_SCALE = 2;
 const MAX_COMBOS = 50000;
 
+// Días hacia atrás que se miran para no repetir platos, y penalización por repetir
+// ayer (decrece hasta casi 0 al llegar al límite).
+export const HISTORY_DAYS = 6;
+const REPEAT_PENALTY = 0.15;
+
 export function recipeMatches(recipe, category) {
   return (recipe.categorias || [recipe.categoria]).includes(category);
 }
@@ -59,8 +64,9 @@ function seededRandom(seedStr) {
 }
 
 // Elige una receta por franja vacía y escala sus cantidades para que el día
-// se acerque lo máximo posible a las calorías y macros objetivo.
-export function planDay({ dateStr, slots, day, recipes, foodsById, settings }) {
+// se acerque lo máximo posible a las calorías y macros objetivo, evitando los
+// platos de los días anteriores (recentRecipes: nombre de receta → hace cuántos días).
+export function planDay({ dateStr, slots, day, recipes, foodsById, settings, recentRecipes = new Map() }) {
   const filledSlots = new Set(day.entries.filter((e) => e.items.length).map((e) => e.slotName));
   const base = totalsOf(day.entries.flatMap((e) => e.items), foodsById);
   const emptySlots = slots.filter((s) => !filledSlots.has(s.name));
@@ -105,6 +111,8 @@ export function planDay({ dateStr, slots, day, recipes, foodsById, settings }) {
       if (seen.has(c.recipe.id)) penalty += 0.05;
       seen.add(c.recipe.id);
       penalty += variety.get(c.recipe.id) || 0;
+      const daysAgo = recentRecipes.get(c.recipe.nombre);
+      if (daysAgo) penalty += (REPEAT_PENALTY * (HISTORY_DAYS + 1 - daysAgo)) / HISTORY_DAYS;
     });
     const err = (k) => (goal[k] > 0 ? ((t[k] - goal[k]) / goal[k]) ** 2 : 0);
     return 2 * err('kcal') + err('prot') + err('carbs') + err('grasa') + penalty;

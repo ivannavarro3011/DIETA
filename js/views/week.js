@@ -1,5 +1,5 @@
 import { SHIFTS } from '../shifts.js';
-import { startOfWeek, weekDates, addDays, formatDateHuman, todayStr, round1 } from '../utils.js';
+import { startOfWeek, weekDates, addDays, formatDateHuman, todayStr, round1, escapeHtml } from '../utils.js';
 import {
   getDayMeals, setDayTurno, getAllFoods, computeDayTotals,
   getShoppingChecks, setShoppingCheck, getShoppingExtras, addShoppingExtra,
@@ -136,7 +136,7 @@ async function renderShoppingList(el, monday, days, foodsById) {
           <div class="shopping-item ${checked ? 'checked' : ''}">
             <label class="shopping-item-label">
               <input type="checkbox" data-key="${item.key}" ${checked ? 'checked' : ''} />
-              <span>${item.nombre}${item.cantidad ? ` · ${item.cantidad}` : ''}</span>
+              <span>${escapeHtml(item.nombre)}${item.cantidad ? ` · ${escapeHtml(item.cantidad)}` : ''}</span>
             </label>
             ${item.extraId ? `<button class="remove-item-btn" data-extra="${item.extraId}">✕</button>` : ''}
           </div>

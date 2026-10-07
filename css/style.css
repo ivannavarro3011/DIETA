@@ -464,6 +464,41 @@ html, body {
 }
 .history-row:last-child { border-bottom: none; }
 
+.lookup-box {
+  background: var(--accent-soft);
+  border-radius: 12px;
+  padding: 4px 12px 12px;
+  margin-bottom: 6px;
+}
+
+.lookup-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.lookup-row .input { flex: 1; min-width: 0; }
+
+.scan-btn {
+  width: 100%;
+  margin-top: 8px;
+  background: var(--card-bg);
+}
+
+.scanner-area { margin-top: 8px; }
+
+.scan-video {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #000;
+  display: block;
+}
+
+.lookup-result { cursor: pointer; gap: 8px; }
+.lookup-result .food-result-kcal { white-space: nowrap; font-size: 12px; }
+
 .onboarding {
   padding: 16px;
 }

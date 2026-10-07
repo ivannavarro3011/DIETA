@@ -2,9 +2,9 @@ import { db } from './db.js';
 import { SEED_FOODS } from './seed-foods.js';
 import { SEED_RECIPES } from './seed-recipes.js';
 import { defaultTurnoForDate } from './shifts.js';
-import { planDay, totalsOf } from './menu-planner.js';
+import { planDay, totalsOf, HISTORY_DAYS } from './menu-planner.js';
 import { calcTargets, isProfileComplete } from './nutrition.js';
-import { uid } from './utils.js';
+import { uid, addDays } from './utils.js';
 
 const SETTINGS_ID = 'main';
 
@@ -227,13 +227,25 @@ export async function applyRecipeToSlot(dateStr, slotName, recipe) {
   return day;
 }
 
+async function getRecentRecipes(dateStr) {
+  const recent = new Map();
+  for (let daysAgo = HISTORY_DAYS; daysAgo >= 1; daysAgo--) {
+    const past = await db.get(db.STORES.dayMeals, addDays(dateStr, -daysAgo));
+    if (!past) continue;
+    for (const item of past.entries.flatMap((e) => e.items)) {
+      if (item.recipeNombre) recent.set(item.recipeNombre, daysAgo);
+    }
+  }
+  return recent;
+}
+
 // Rellena las franjas vacías del día con recetas escaladas a los macros objetivo.
 export async function generateDayMenu(dateStr, slots) {
-  const [recipes, foods, settings, day] = await Promise.all([
-    getAllRecipes(), db.getAll(db.STORES.foods), getSettings(), getDayMeals(dateStr),
+  const [recipes, foods, settings, day, recentRecipes] = await Promise.all([
+    getAllRecipes(), db.getAll(db.STORES.foods), getSettings(), getDayMeals(dateStr), getRecentRecipes(dateStr),
   ]);
   const foodsById = new Map(foods.map((f) => [f.id, f]));
-  const plan = planDay({ dateStr, slots, day, recipes, foodsById, settings });
+  const plan = planDay({ dateStr, slots, day, recipes, foodsById, settings, recentRecipes });
   for (const [slotName, recipe] of plan) addRecipeItems(day, slotName, recipe);
   await saveDayMeals(day);
   return day;
