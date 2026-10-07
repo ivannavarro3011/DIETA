@@ -540,6 +540,32 @@ html, body {
   font-size: 13px;
 }
 
+.day-lookup { margin-top: 12px; }
+
+.portion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portion-chip {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.portion-count {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  min-height: 18px;
+}
+
 .app-version {
   text-align: center;
   font-size: 11px;

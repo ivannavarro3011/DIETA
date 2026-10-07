@@ -1,7 +1,7 @@
 import { getAllFoods, addFood, updateFood, deleteFood } from '../store.js';
 import { CATEGORIES } from '../seed-foods.js';
-import { searchProducts, getProductByBarcode, guessCategory } from '../food-lookup.js';
-import { startScanner } from '../barcode-scanner.js';
+import { guessCategory } from '../food-lookup.js';
+import { mountProductLookup } from './product-lookup.js';
 import { escapeHtml } from '../utils.js';
 
 let searchQuery = '';
@@ -52,16 +52,11 @@ function renderList(container, foods) {
   });
 }
 
-function lookupErrorMessage(err) {
-  if (err?.message === 'offline' || !navigator.onLine) return 'Sin conexión. Para buscar los macros necesitas internet; puedes rellenarlos a mano.';
-  return 'El buscador de Open Food Facts está saturado ahora mismo. Prueba otra vez en un momento, escanea el código o rellena a mano.';
-}
-
 function openFoodModal(container, food) {
   const modalRoot = document.getElementById('modal-root');
   const isNew = !food;
   const f = food || { nombre: '', categoria: 'Proteína', kcal100: '', prot100: '', carbs100: '', grasa100: '' };
-  let stopScan = null;
+  let appliedProduct = null;
 
   modalRoot.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
@@ -71,24 +66,7 @@ function openFoodModal(container, food) {
           <button class="icon-btn" id="closeModal">✕</button>
         </div>
 
-        <div class="lookup-box">
-          <div class="field-label">Rellenar macros automáticamente</div>
-          <div class="lookup-row">
-            <input type="search" id="lookupQuery" class="input" placeholder="Ej: skyr, Milsani quark, pechuga pavo" enterkeyhint="search" />
-            <button class="primary-btn small" id="lookupBtn">Buscar</button>
-          </div>
-          <button class="suggest-btn scan-btn" id="scanBtn">📷 Escanear código de barras</button>
-          <div id="scannerArea" class="scanner-area" hidden>
-            <video id="scanVideo" class="scan-video" playsinline muted></video>
-            <div class="lookup-row">
-              <input type="text" id="manualCode" class="input" inputmode="numeric" placeholder="O escribe el número del código" />
-              <button class="primary-btn small" id="manualCodeBtn">OK</button>
-            </div>
-            <button class="link-btn" id="cancelScanBtn">Cancelar escaneo</button>
-          </div>
-          <div id="lookupStatus" class="empty-hint" hidden></div>
-          <div id="lookupResults" class="food-results"></div>
-        </div>
+        <div id="productLookup"></div>
 
         <label class="field-label">Nombre</label>
         <input type="text" id="fNombre" class="input" value="${escapeHtml(f.nombre)}" />
@@ -109,109 +87,27 @@ function openFoodModal(container, food) {
   `;
 
   const $ = (id) => document.getElementById(id);
-  const statusEl = $('lookupStatus');
-  const resultsEl = $('lookupResults');
 
-  const setStatus = (text) => {
-    statusEl.hidden = !text;
-    statusEl.textContent = text || '';
-  };
-
-  const stopScanner = () => {
-    if (stopScan) { stopScan(); stopScan = null; }
-    $('scannerArea').hidden = true;
-  };
+  const lookup = mountProductLookup($('productLookup'), {
+    title: 'Rellenar macros automáticamente',
+    onSelect: (p) => {
+      appliedProduct = p;
+      $('fNombre').value = p.nombre;
+      $('fCategoria').value = guessCategory(p);
+      $('fKcal').value = p.kcal100;
+      $('fProt').value = p.prot100;
+      $('fCarbs').value = p.carbs100;
+      $('fGrasa').value = p.grasa100;
+      lookup.setStatus('Datos de Open Food Facts por 100 g. Revísalos con la etiqueta antes de guardar.');
+    },
+  });
 
   const close = () => {
-    stopScanner();
+    lookup.destroy();
     modalRoot.innerHTML = '';
   };
   $('modalBackdrop').onclick = (e) => { if (e.target.id === 'modalBackdrop') close(); };
   $('closeModal').onclick = close;
-
-  function applyProduct(p) {
-    $('fNombre').value = p.nombre;
-    $('fCategoria').value = guessCategory(p);
-    $('fKcal').value = p.kcal100;
-    $('fProt').value = p.prot100;
-    $('fCarbs').value = p.carbs100;
-    $('fGrasa').value = p.grasa100;
-    resultsEl.innerHTML = '';
-    setStatus('Datos de Open Food Facts por 100 g. Revísalos con la etiqueta antes de guardar.');
-  }
-
-  function renderResults(products) {
-    resultsEl.innerHTML = products.map((p, i) => `
-      <div class="food-result lookup-result" data-idx="${i}">
-        <span>${escapeHtml(p.nombre)}</span>
-        <span class="food-result-kcal">${p.kcal100} kcal · P${p.prot100} C${p.carbs100} G${p.grasa100}</span>
-      </div>
-    `).join('');
-    resultsEl.querySelectorAll('.lookup-result').forEach((row) => {
-      row.onclick = () => applyProduct(products[Number(row.dataset.idx)]);
-    });
-  }
-
-  async function runSearch() {
-    const term = $('lookupQuery').value.trim();
-    if (!term) return;
-    stopScanner();
-    resultsEl.innerHTML = '';
-    setStatus('Buscando…');
-    $('lookupBtn').disabled = true;
-    try {
-      const products = await searchProducts(term);
-      if (!$('lookupBtn')) return;
-      setStatus(products.length
-        ? 'Elige el producto (primero salen los de España y Alemania):'
-        : 'No he encontrado nada con macros. Prueba con otras palabras (vale en alemán) o escanea el código.');
-      renderResults(products);
-    } catch (err) {
-      if ($('lookupBtn')) setStatus(lookupErrorMessage(err));
-    } finally {
-      if ($('lookupBtn')) $('lookupBtn').disabled = false;
-    }
-  }
-
-  async function lookupBarcode(code) {
-    stopScanner();
-    resultsEl.innerHTML = '';
-    setStatus(`Buscando el código ${code}…`);
-    try {
-      const product = await getProductByBarcode(code);
-      if (!$('lookupStatus')) return;
-      if (product) applyProduct(product);
-      else setStatus(`El código ${code} no está en Open Food Facts o no tiene macros. Rellénalos a mano con la etiqueta.`);
-    } catch (err) {
-      if ($('lookupStatus')) setStatus(lookupErrorMessage(err));
-    }
-  }
-
-  $('lookupBtn').onclick = runSearch;
-  $('lookupQuery').onkeydown = (e) => { if (e.key === 'Enter') runSearch(); };
-
-  $('scanBtn').onclick = () => {
-    if (stopScan) return;
-    resultsEl.innerHTML = '';
-    setStatus('Apunta la cámara al código de barras…');
-    $('scannerArea').hidden = false;
-    $('scanVideo').hidden = false;
-    stopScan = startScanner(
-      $('scanVideo'),
-      (code) => { stopScan = null; lookupBarcode(code); },
-      () => {
-        stopScan = null;
-        $('scanVideo').hidden = true;
-        setStatus('No he podido usar la cámara. Revisa el permiso de cámara o escribe el número del código.');
-      },
-    );
-  };
-  $('cancelScanBtn').onclick = () => { stopScanner(); setStatus(''); };
-  $('manualCodeBtn').onclick = () => {
-    const code = $('manualCode').value.replace(/\D/g, '');
-    if (code.length >= 8) lookupBarcode(code);
-    else setStatus('El código de barras tiene 8 o 13 números.');
-  };
 
   $('saveFoodBtn').onclick = async () => {
     const payload = {
@@ -223,10 +119,18 @@ function openFoodModal(container, food) {
       grasa100: Number($('fGrasa').value) || 0,
     };
     if (!payload.nombre) return;
-    if (isNew) {
-      await addFood(payload);
+    if (appliedProduct) {
+      payload.codigo = appliedProduct.code;
+      payload.porciones = appliedProduct.porciones;
+    }
+    // Un producto escaneado que ya estaba guardado se actualiza en vez de duplicarse.
+    const target = isNew && payload.codigo
+      ? (await getAllFoods()).find((x) => x.codigo === payload.codigo)
+      : food;
+    if (target) {
+      await updateFood({ ...target, ...payload, id: target.id });
     } else {
-      await updateFood({ ...payload, id: food.id });
+      await addFood(payload);
     }
     close();
     renderFoods(container);

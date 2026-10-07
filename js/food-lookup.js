@@ -2,7 +2,11 @@
 // españoles y alemanes). Solo se usa al dar de alta alimentos: requiere conexión.
 
 const OFF = 'https://world.openfoodfacts.org';
-const FIELDS = 'code,product_name,product_name_es,product_name_de,brands,countries_tags,nutriments';
+// OFF solo calcula product_quantity/serving_quantity si también se piden quantity y serving_size.
+const FIELDS = 'code,product_name,product_name_es,product_name_de,brands,countries_tags,nutriments,'
+  + 'quantity,serving_size,serving_quantity,product_quantity,product_quantity_unit';
+// Envases más grandes no son una cantidad que se coma de una vez; no se ofrecen como botón.
+const MAX_PACKAGE_PORTION_G = 1000;
 const PREFERRED_COUNTRIES = ['en:spain', 'en:germany'];
 // El buscador de OFF suele devolver 503 cuando está saturado; reintentando unas veces responde.
 const MAX_ATTEMPTS = 4;
@@ -50,8 +54,21 @@ export function parseProduct(p) {
     prot100: prot ?? 0,
     carbs100: carbs ?? 0,
     grasa100: grasa ?? 0,
+    porciones: parsePortions(p),
     countries: p.countries_tags || [],
   };
+}
+
+function parsePortions(p) {
+  const portions = [];
+  const serving = Math.round(Number(p.serving_quantity));
+  if (serving > 0) portions.push({ nombre: '1 ración', gramos: serving });
+  const unit = (p.product_quantity_unit || 'g').toLowerCase();
+  const pack = Math.round(Number(p.product_quantity));
+  if (['g', 'ml'].includes(unit) && pack > 0 && pack <= MAX_PACKAGE_PORTION_G && pack !== serving) {
+    portions.push({ nombre: '1 envase', gramos: pack });
+  }
+  return portions;
 }
 
 function countryScore(product) {

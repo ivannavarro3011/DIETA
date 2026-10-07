@@ -14,6 +14,7 @@ const ASSETS = [
   './js/menu-planner.js',
   './js/nutrition.js',
   './js/views/profile-form.js',
+  './js/views/product-lookup.js',
   './js/food-lookup.js',
   './js/barcode-scanner.js',
   './js/shifts.js',

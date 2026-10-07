@@ -33,6 +33,14 @@ export async function ensureInitialized() {
       await db.add(db.STORES.foods, f);
     }
   }
+  // Las raciones de serie se añaden a alimentos ya guardados que no tengan; los macros
+  // no se tocan porque el usuario puede haberlos editado.
+  for (const existing of existingFoods) {
+    const seed = SEED_FOODS.find((f) => f.nombre === existing.nombre);
+    if (seed?.porciones && !existing.porciones) {
+      await db.put(db.STORES.foods, { ...existing, porciones: seed.porciones });
+    }
+  }
 
   const foods = await db.getAll(db.STORES.foods);
   const foodIdByName = new Map(foods.map((f) => [f.nombre, f.id]));
@@ -86,6 +94,32 @@ export async function getAllFoods() {
 
 export async function addFood(food) {
   return db.add(db.STORES.foods, food);
+}
+
+// Guarda un producto de Open Food Facts en la base de alimentos, reutilizando el que ya
+// exista con el mismo código de barras o nombre. Devuelve el alimento guardado (con id).
+export async function saveProductAsFood(product, categoria) {
+  const foods = await db.getAll(db.STORES.foods);
+  const existing = foods.find((f) => (product.code && f.codigo === product.code) || f.nombre === product.nombre);
+  if (existing) {
+    if (!existing.porciones?.length && product.porciones?.length) {
+      existing.porciones = product.porciones;
+      await db.put(db.STORES.foods, existing);
+    }
+    return existing;
+  }
+  const food = {
+    nombre: product.nombre,
+    categoria,
+    kcal100: product.kcal100,
+    prot100: product.prot100,
+    carbs100: product.carbs100,
+    grasa100: product.grasa100,
+    codigo: product.code,
+    porciones: product.porciones || [],
+  };
+  food.id = await db.add(db.STORES.foods, food);
+  return food;
 }
 
 export async function updateFood(food) {

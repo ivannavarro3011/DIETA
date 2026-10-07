@@ -3,10 +3,12 @@ import { formatDateHuman, addDays, todayStr, round1, escapeHtml } from '../utils
 import {
   getDayMeals, setDayTurno, addItemToSlot, removeItemFromSlot,
   getAllFoods, getSettings, computeDayTotals,
-  getAllRecipes, applyRecipeToSlot, generateDayMenu,
+  getAllRecipes, applyRecipeToSlot, generateDayMenu, saveProductAsFood,
 } from '../store.js';
 import { slotCategory } from '../meal-category.js';
 import { candidateRecipes, scaleRecipe, slotShareKcal, totalsOf } from '../menu-planner.js';
+import { guessCategory } from '../food-lookup.js';
+import { mountProductLookup } from './product-lookup.js';
 
 let state = {
   date: todayStr(),
@@ -137,7 +139,7 @@ function renderSlots(el, foodsById) {
   }).join('');
 
   el.querySelectorAll('.add-food-btn').forEach((btn) => {
-    btn.onclick = () => openAddFoodModal(btn.dataset.slot, el);
+    btn.onclick = () => openAddFoodModal(btn.dataset.slot);
   });
   el.querySelectorAll('.suggest-btn').forEach((btn) => {
     btn.onclick = () => openSuggestionsModal(btn.dataset.slot);
@@ -214,7 +216,7 @@ function openSuggestionsModal(slotName) {
   });
 }
 
-function openAddFoodModal(slotName, slotsEl) {
+function openAddFoodModal(slotName) {
   const modalRoot = document.getElementById('modal-root');
   modalRoot.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
@@ -223,18 +225,33 @@ function openAddFoodModal(slotName, slotsEl) {
           <span>Añadir a ${slotName}</span>
           <button class="icon-btn" id="closeModal">✕</button>
         </div>
-        <input type="text" id="foodSearch" class="input" placeholder="Buscar alimento..." autofocus />
+        <input type="text" id="foodSearch" class="input" placeholder="Buscar en mis alimentos..." />
         <div id="foodResults" class="food-results"></div>
+        <div id="productLookup" class="day-lookup"></div>
       </div>
     </div>
   `;
 
+  const searchInput = document.getElementById('foodSearch');
+  const resultsEl = document.getElementById('foodResults');
+
+  const lookup = mountProductLookup(document.getElementById('productLookup'), {
+    title: '¿No está? Búscalo en el súper o escanéalo',
+    onSelect: async (product) => {
+      lookup.setStatus('Guardando en tus alimentos…');
+      const food = await saveProductAsFood(product, guessCategory(product));
+      if (!state.foods.some((f) => f.id === food.id)) state.foods.push(food);
+      selectFood(food);
+    },
+  });
+
+  function closeModal() {
+    lookup.destroy();
+    modalRoot.innerHTML = '';
+  }
   const backdrop = document.getElementById('modalBackdrop');
   backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
   document.getElementById('closeModal').onclick = closeModal;
-
-  const searchInput = document.getElementById('foodSearch');
-  const resultsEl = document.getElementById('foodResults');
 
   function renderResults(query) {
     const q = query.trim().toLowerCase();
@@ -246,42 +263,84 @@ function openAddFoodModal(slotName, slotsEl) {
         <span>${escapeHtml(f.nombre)}</span>
         <span class="food-result-kcal">${f.kcal100} kcal/100g</span>
       </div>
-    `).join('') || '<div class="empty-hint">Sin resultados</div>';
+    `).join('') || '<div class="empty-hint">No está en tus alimentos. Búscalo abajo en el súper o escanéalo.</div>';
 
     resultsEl.querySelectorAll('.food-result').forEach((row) => {
-      row.onclick = () => selectFood(Number(row.dataset.id));
+      row.onclick = () => selectFood(state.foods.find((f) => f.id === Number(row.dataset.id)));
     });
   }
 
-  function selectFood(foodId) {
-    const food = state.foods.find((f) => f.id === foodId);
+  function selectFood(food) {
+    lookup.destroy();
+    const porciones = food.porciones || [];
     modalRoot.querySelector('.modal').innerHTML = `
       <div class="modal-header">
         <span>${escapeHtml(food.nombre)}</span>
         <button class="icon-btn" id="closeModal2">✕</button>
       </div>
+      ${porciones.length ? `
+        <label class="field-label">Toca para sumar unidades</label>
+        <div class="portion-chips">
+          ${porciones.map((p, i) => `
+            <button class="portion-chip" data-idx="${i}">${escapeHtml(p.nombre)} · ${p.gramos} g</button>
+          `).join('')}
+        </div>
+        <div class="portion-count" id="portionCount"></div>
+      ` : ''}
       <label class="field-label">Cantidad (gramos)</label>
-      <input type="number" id="gramosInput" class="input" value="100" min="1" step="1" autofocus />
+      <input type="number" id="gramosInput" class="input" inputmode="decimal" min="1" step="1" />
       <div class="modal-preview" id="modalPreview"></div>
       <button class="primary-btn" id="confirmAddFood">Añadir</button>
     `;
     document.getElementById('closeModal2').onclick = closeModal;
     const gramosInput = document.getElementById('gramosInput');
     const preview = document.getElementById('modalPreview');
+    const countEl = document.getElementById('portionCount');
+
+    // Tocar varias veces la misma unidad la va sumando (3 toques = 3 huevos).
+    let chip = null;
+    let count = 0;
+    function setPortion(idx, n) {
+      chip = idx;
+      count = n;
+      gramosInput.value = porciones[idx].gramos * n;
+      const nombre = porciones[idx].nombre;
+      countEl.textContent = n === 1 ? `= ${nombre}` : `= ${n} × ${nombre.replace(/^1 /, '')}`;
+      updatePreview();
+    }
+
     function updatePreview() {
       const g = Number(gramosInput.value) || 0;
       const factor = g / 100;
-      preview.innerHTML = `${round1(food.kcal100 * factor)} kcal · P ${round1(food.prot100 * factor)}g · C ${round1(food.carbs100 * factor)}g · G ${round1(food.grasa100 * factor)}g`;
+      preview.textContent = `${round1(food.kcal100 * factor)} kcal · P ${round1(food.prot100 * factor)}g · C ${round1(food.carbs100 * factor)}g · G ${round1(food.grasa100 * factor)}g`;
     }
-    gramosInput.oninput = updatePreview;
-    updatePreview();
-    gramosInput.focus();
-    gramosInput.select();
+
+    modalRoot.querySelectorAll('.portion-chip').forEach((btn) => {
+      btn.onclick = () => {
+        const idx = Number(btn.dataset.idx);
+        setPortion(idx, chip === idx ? count + 1 : 1);
+      };
+    });
+    gramosInput.oninput = () => {
+      chip = null;
+      count = 0;
+      if (countEl) countEl.textContent = '';
+      updatePreview();
+    };
+
+    if (porciones.length) {
+      setPortion(0, 1);
+    } else {
+      gramosInput.value = 100;
+      updatePreview();
+      gramosInput.focus();
+      gramosInput.select();
+    }
 
     document.getElementById('confirmAddFood').onclick = async () => {
       const gramos = Number(gramosInput.value) || 0;
       if (gramos <= 0) return;
-      await addItemToSlot(state.date, slotName, { foodId, gramos });
+      await addItemToSlot(state.date, slotName, { foodId: food.id, gramos });
       state.day = await getDayMeals(state.date);
       closeModal();
       const container = document.getElementById('view-container');
@@ -289,10 +348,9 @@ function openAddFoodModal(slotName, slotsEl) {
     };
   }
 
-  function closeModal() {
-    modalRoot.innerHTML = '';
-  }
-
-  searchInput.oninput = () => renderResults(searchInput.value);
+  searchInput.oninput = () => {
+    renderResults(searchInput.value);
+    lookup.setQuery(searchInput.value);
+  };
   renderResults('');
 }
