@@ -78,7 +78,7 @@ function renderWeekDays(el, dates, days, foodsById, container) {
         </div>
         <select class="select small" data-date="${date}">
           ${Object.entries(SHIFTS).map(([key, s]) => `
-            <option value="${key}" ${key === day.turno ? 'selected' : ''}>${s.label.split(' (')[0]}</option>
+            <option value="${key}" ${key === day.turno ? 'selected' : ''}>${key === 'libre' ? 'Libre' : s.label.split(' (')[0]}</option>
           `).join('')}
         </select>
         <div class="week-day-kcal">${round1(totals.kcal)} kcal</div>

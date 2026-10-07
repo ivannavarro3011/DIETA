@@ -1,38 +1,20 @@
+/* Tema único "oro y terciopelo", a juego con el logo (no cambia con el modo claro/oscuro del móvil). */
 :root {
-  --bg: #f4f6f5;
-  --card-bg: #ffffff;
-  --text: #16201c;
-  --text-muted: #6b7570;
-  --border: #e2e6e3;
-  --accent: #2f8f5b;
-  --accent-soft: #e4f3ea;
-  --danger: #d64545;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #121614;
-    --card-bg: #1b211e;
-    --text: #eef2ef;
-    --text-muted: #93a099;
-    --border: #2a322d;
-    --accent: #4cbf82;
-    --accent-soft: #1c3229;
-    --danger: #e5645f;
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --bg: #121614;
-  --card-bg: #1b211e;
-  --text: #eef2ef;
-  --text-muted: #93a099;
-  --border: #2a322d;
-  --accent: #4cbf82;
-  --accent-soft: #1c3229;
-  --danger: #e5645f;
+  --bg: #14041b;
+  --card-bg: #240a30;
+  --text: #fbefd0;
+  --text-muted: #c9a978;
+  --border: #6b4512;
+  --accent: #f2c23a;
+  --accent-soft: #3a1846;
+  --danger: #ff4d6d;
+  --gold-border: #8a5a12;
+  --gold-text: #f7d354;
+  --gold-light: #ffe680;
+  --oro: linear-gradient(180deg, #fff3b0 0%, #f7d354 35%, #c4881a 60%, #ffe680 85%, #9c6508 100%);
+  --oro-boton: linear-gradient(180deg, #fff3b0 0%, #e9b937 45%, #8f5a06 100%);
+  --font-titulo: 'Cinzel Decorative', Georgia, 'Times New Roman', serif;
+  --font-texto: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
 }
 
@@ -41,9 +23,10 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: radial-gradient(circle at 50% 0%, #4a1460 0%, #1d0628 45%, var(--bg) 75%) fixed;
+  background-color: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-texto);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -579,3 +562,123 @@ html, body {
   padding: 40px 0;
   font-size: 13px;
 }
+
+/* ---------- Tema oro y terciopelo ---------- */
+
+.app-header {
+  background: linear-gradient(180deg, #1d0628 0%, rgba(20, 4, 27, 0.92) 100%);
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, transparent, var(--accent), transparent) 1;
+}
+
+.app-title {
+  font-family: var(--font-titulo);
+  font-weight: 900;
+  font-size: 22px;
+  background: var(--oro);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 8px rgba(242, 194, 58, 0.45));
+}
+
+.section-title, .slot-name, .day-date, .modal-header, .recipe-name, .week-day-name {
+  font-family: var(--font-titulo);
+  font-weight: 700;
+  color: var(--gold-text);
+}
+
+.card {
+  background: linear-gradient(160deg, #2e0d3c 0%, #1c0725 100%);
+  border: 1.5px solid var(--gold-border);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px rgba(255, 230, 128, 0.08), 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.icon-btn {
+  background: var(--card-bg);
+  border: 1.5px solid var(--gold-border);
+  color: var(--gold-text);
+}
+
+.day-badge, .food-row-cat {
+  background: var(--oro);
+  color: #2a0838;
+  font-weight: 800;
+}
+
+.select, .input {
+  background: #1a0622;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.progress { background: var(--accent-soft); height: 10px; }
+.progress-fill {
+  background: linear-gradient(90deg, #c4881a, var(--gold-light), var(--accent));
+  box-shadow: 0 0 10px rgba(242, 194, 58, 0.7);
+}
+
+.generate-menu-btn, .primary-btn {
+  background: var(--oro-boton);
+  color: #2a0838;
+  border: 1.5px solid #fff3b0;
+  box-shadow: 0 0 16px rgba(242, 194, 58, 0.5);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  font-weight: 800;
+}
+.generate-menu-btn {
+  font-family: var(--font-titulo);
+  font-weight: 900;
+  font-size: 16px;
+  border-radius: 999px;
+}
+.primary-btn:disabled { opacity: 0.6; }
+
+.slot-kcal, .recipe-kcal, .week-day-kcal { color: var(--gold-light); }
+
+.slot-item, .food-result, .recipe-card {
+  background: rgba(10, 2, 14, 0.55);
+  border: 1px solid rgba(138, 90, 18, 0.5);
+}
+
+.suggest-btn {
+  background: var(--accent-soft);
+  color: var(--gold-text);
+  border: 1px solid var(--gold-border);
+}
+.scan-btn { background: #1a0622; }
+.add-food-btn { border-color: var(--gold-border); color: var(--text-muted); }
+
+.portion-chip {
+  background: var(--oro);
+  color: #2a0838;
+  border-color: #fff3b0;
+  font-weight: 800;
+}
+.portion-count { color: var(--gold-light); }
+
+.shopping-category-title { color: var(--gold-text); }
+.shopping-item input[type="checkbox"] { accent-color: var(--accent); }
+
+.bottom-nav {
+  background: linear-gradient(180deg, #2a0b36, var(--bg));
+  border-top: 2px solid #c4881a;
+}
+.nav-btn { color: #a88a5c; }
+.nav-btn.active { color: var(--gold-light); text-shadow: 0 0 8px rgba(242, 194, 58, 0.8); }
+
+.modal-backdrop { background: rgba(5, 0, 8, 0.7); }
+.modal {
+  background: linear-gradient(180deg, #2e0d3c, var(--bg));
+  border-top: 2px solid var(--accent);
+}
+.lookup-box { background: var(--accent-soft); border: 1px solid rgba(138, 90, 18, 0.5); }
+.link-btn { color: var(--gold-light); }
+
+.onboarding-intro .app-title { font-size: 26px; }
+.week-day-label { width: 118px; flex-shrink: 0; }
+.week-day-row .select.small { flex: 1; min-width: 0; }
+.week-day-row .week-day-kcal { width: 84px; flex-shrink: 0; }
+.recipe-card-header { gap: 10px; }
+.recipe-kcal { white-space: nowrap; }
